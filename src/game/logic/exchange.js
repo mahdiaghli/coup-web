@@ -79,12 +79,20 @@ export function createExchangeHandlers(ctx) {
     const origCount = s.pendingExchange.origCount || player.influences.length;
     const maxPick = origCount;
 
-    if (
-      !Array.isArray(selectedNewCards) ||
-      selectedNewCards.length < 1 ||
-      selectedNewCards.length > maxPick
-    ) {
-      pushLog(`باید حداقل ۱ و حداکثر ${maxPick} کارت جدید انتخاب کنید.`);
+    if (!Array.isArray(selectedNewCards) || selectedNewCards.length > maxPick) {
+      pushLog(`باید حداکثر ${maxPick} کارت جدید انتخاب کنید.`);
+      return;
+    }
+
+    // If player selected no new cards, treat as "no change": return new cards to deck
+    if (selectedNewCards.length === 0) {
+      pushLog(`${player.name} هیچ کارتی انتخاب نکرد — کارت‌ها تغییر نکردند.`);
+      // return all offered new cards back to deck
+      s.deck = deckShuffle([...s.deck, ...s.pendingExchange.newCards]);
+      s.pendingExchange = null;
+      setGameState({ ...s });
+      clearScheduled();
+      advanceTurn(s);
       return;
     }
 

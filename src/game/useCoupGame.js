@@ -13,6 +13,9 @@ import {
 export default function useCoupGame(difficulty) {
   const [gameState, _setGameState] = useState(null);
   const [log, setLog] = useState([]);
+  // gamification: persistent totals stored in localStorage and per-game score
+  const [totals, setTotals] = useState({ score: 0, hp: 0, gems: 0 });
+  const [gameScore, setGameScore] = useState(0);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [reveal, setReveal] = useState(null);
 
@@ -36,8 +39,68 @@ export default function useCoupGame(difficulty) {
     };
   }, []);
 
+  // load totals from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("gw_totals");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // migrate old 'coins' key to 'hp' if necessary
+        if (parsed && parsed.coins != null && parsed.hp == null) {
+          parsed.hp = parsed.coins;
+          delete parsed.coins;
+        }
+        setTotals(parsed);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  function persistTotals(next) {
+    try {
+      localStorage.setItem("gw_totals", JSON.stringify(next));
+    } catch (e) {}
+  }
+
+  function addPersistentScore(n) {
+    setTotals((t) => {
+      const next = { ...t, score: (t.score || 0) + n };
+      persistTotals(next);
+      return next;
+    });
+  }
+
+  function addPersistentHP(n) {
+    setTotals((t) => {
+      const next = { ...t, hp: (t.hp || 0) + n };
+      persistTotals(next);
+      return next;
+    });
+  }
+
+  function addPersistentGems(n) {
+    setTotals((t) => {
+      const next = { ...t, gems: (t.gems || 0) + n };
+      persistTotals(next);
+      return next;
+    });
+  }
+
+  function addGameScore(n) {
+    setGameScore((s) => s + n);
+  }
+
+  function resetGameScore() {
+    setGameScore(0);
+  }
+
   function pushLog(txt) {
     setLog((l) => [txt, ...l].slice(0, 200));
+  }
+
+  function resetLog() {
+    setLog([]);
   }
 
   function getPlayer(id) {
@@ -61,7 +124,39 @@ export default function useCoupGame(difficulty) {
     return drawOneHelper(state);
   }
   function checkWinner(state) {
-    return checkWinnerHelper(state, pushLog, setGameState);
+    const res = checkWinnerHelper(state, pushLog, setGameState);
+    // if a winner was set, award persistent rewards
+    const cur = stateRef.current || state;
+    if (cur && cur.winner != null) {
+      // compute final ranking: sort by (alive desc, gameScore desc, eliminatedAt asc)
+      try {
+        const playersCopy = (cur.players || []).map((p) => ({ ...p }));
+        playersCopy.sort((a, b) => {
+          // alive players first
+          if (a.alive && !b.alive) return -1;
+          if (!a.alive && b.alive) return 1;
+          // then by gameScore desc
+          const sa = a.gameScore || 0;
+          const sb = b.gameScore || 0;
+          if (sa !== sb) return sb - sa;
+          // tie-breaker: who survived longer (eliminatedAt smaller means earlier elimination -> worse)
+          const ea = a.eliminatedAt || Infinity;
+          const eb = b.eliminatedAt || Infinity;
+          return ea - eb;
+        });
+        // attach ranking index
+        cur.ranking = playersCopy.map((p, idx) => ({ id: p.id, rank: idx + 1, name: p.name, gameScore: p.gameScore || 0 }));
+        setGameState({ ...cur });
+      } catch (e) {}
+      // give the winner some persistent score/coins/gems
+      try {
+        addPersistentScore(50);
+        addPersistentHP(20);
+        addPersistentGems(1);
+        pushLog(`برنده پاداش دریافت کرد: +50 امتیاز، +20 HP، +1 الماس`);
+      } catch (e) {}
+    }
+    return res;
   }
 
   // *** تغییر مهم: قبل از حرکت به نوبت بعدی scheduled timers پاک می‌شوند ***
@@ -86,6 +181,13 @@ export default function useCoupGame(difficulty) {
     drawOneFromState,
     checkWinner,
     advanceTurn,
+    // gamification helpers
+  addPersistentScore,
+  addPersistentHP,
+  addPersistentGems,
+    addGameScore,
+    resetGameScore,
+    resetLog,
   };
 
   // compose modules (order matters for cross-calls)
@@ -233,12 +335,17 @@ export default function useCoupGame(difficulty) {
     setGameState,
     log,
     timerSeconds,
+    totals,
+    gameScore,
     reveal,
     onCloseReveal: () => setReveal(null),
     getPlayer,
     pushLog,
     startBotGame,
     humanDo,
+    addPersistentScore,
+    addPersistentHP,
+    addPersistentGems,
     humanChallenge,
     humanBlock,
     humanAcceptAction,

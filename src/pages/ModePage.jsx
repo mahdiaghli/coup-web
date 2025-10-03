@@ -1,10 +1,18 @@
 // src/pages/ModePage.jsx
 import React from "react";
 
-export default function ModePage({ onContinue }) {
+export default function ModePage({ onContinue, totals }) {
   return (
     <div className="card" style={{display:'flex',flexDirection:'column',gap:12}}>
       <div style={{fontWeight:800,fontSize:18}}>انتخاب حالت بازی</div>
+
+      {totals && (
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <div style={{fontWeight:700}}>امتیاز کل: {totals.score ?? 0}</div>
+          <div style={{color:'#475569'}}>HP: {totals.hp ?? 0}</div>
+          <div style={{color:'#f59e0b'}}>الماس‌ها: {totals.gems ?? 0}</div>
+        </div>
+      )}
 
       <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
         <div style={{flex:1,minWidth:220}} className="card" >

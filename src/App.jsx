@@ -31,6 +31,8 @@ export default function App() {
     humanAcceptAction,
     confirmExchangeSelection,
     confirmLoseSelection,
+    totals,
+    gameScore,
   } = useCoupGame(difficulty);
 
   function handleStart() {
@@ -54,6 +56,8 @@ export default function App() {
     getPlayer,
     reveal,
     onCloseReveal,
+    totals,
+    gameScore,
   };
 
   return (
@@ -62,9 +66,10 @@ export default function App() {
         <Header
           onHome={() => setPage("mode")}
           onRefresh={() => pushLog("رفرش دستی انجام شد.")}
+          totals={totals}
         />
         <main>
-          {page === "mode" && <ModePage onContinue={() => setPage("setup")} />}
+          {page === "mode" && <ModePage onContinue={() => setPage("setup")} totals={totals} />}
           {page === "setup" && (
             <SetupPage
               numPlayers={numPlayers}

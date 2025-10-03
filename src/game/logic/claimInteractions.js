@@ -69,10 +69,16 @@ export function createClaimInteractions(ctx) {
             executeAction(now, claimant2, pa.actionName, pa.targetId);
             const latest = stateRef.current || now;
             if (latest) {
-              latest.pendingAction = null;
-              setGameState({ ...latest });
+              // اگر executeAction یک pendingExchange ایجاد کرد، نباید تایمرها را پاک کنیم — اجازه دهیم Exchange تایمرِ خودش را تنظیم کند
+              if (!latest.pendingExchange) {
+                latest.pendingAction = null;
+                setGameState({ ...latest });
+                clearScheduled();
+              } else {
+                // pendingExchange موجود است؛ فقط state را به‌روز کن و تایمرها را نگه دار
+                setGameState({ ...latest });
+              }
             }
-            clearScheduled();
           }
         }, 10000);
         scheduledTimeouts.current.push(autoBlock);
@@ -86,17 +92,19 @@ export function createClaimInteractions(ctx) {
         );
         const latestAfter = stateRef.current || state;
         if (latestAfter) {
-          latestAfter.pendingAction = null;
-          setGameState({ ...latestAfter });
+          if (!latestAfter.pendingExchange) {
+            latestAfter.pendingAction = null;
+            setGameState({ ...latestAfter });
+            clearScheduled();
+          } else {
+            setGameState({ ...latestAfter });
+          }
         }
-        clearScheduled();
       }
     } else {
       // claimant did NOT have role -> claimant loses influence and action canceled
       pushLog(
-        `${claimant.name} نقش «${
-          p.claimedRole || "—"
-        }» را نداشت — او یک اینفلوانس از دست داد؛ اکشن لغو شد.`
+        `${claimant.name} نقش "${p.claimedRole || "—"}" را نداشت — او یک اینفلوانس از دست داد؛ اکشن لغو شد.`
       );
       initiateLoseInfluence(state, claimant.id);
       state.pendingAction = null;
@@ -363,10 +371,17 @@ export function createClaimInteractions(ctx) {
     const claimant = getPlayer(p.claimantId);
     pushLog("هدف «باشه» را زد — اکشن فوراً انجام می‌شود.");
     executeAction(now, claimant, p.actionName, p.targetId);
-    now.pendingAction = null;
-    setGameState({ ...now });
-    clearScheduled();
-    setTimerSeconds(0);
+      const updated = stateRef.current || now;
+      if (updated) {
+        if (!updated.pendingExchange) {
+          updated.pendingAction = null;
+          setGameState({ ...updated });
+          clearScheduled();
+          setTimerSeconds(0);
+        } else {
+          setGameState({ ...updated });
+        }
+      }
   }
 
   function scheduleBotsChallenges(state) {

@@ -25,6 +25,10 @@ export function createLoseHandlers(ctx) {
       setGameState({ ...state });
       if (player.influences.length === 0) {
         player.alive = false;
+        // record elimination timestamp for ranking
+        try {
+          player.eliminatedAt = Date.now();
+        } catch (e) {}
         const coins = player.coins || 0;
         if (coins > 0) {
           state.treasury = (state.treasury || 0) + coins;

@@ -26,6 +26,8 @@ export default function PlayPage(props) {
     getPlayer,
     reveal,
     onCloseReveal,
+    totals,
+    gameScore,
   } = props;
 
   // محافظت اولیه — اگر gameState تعریف نشده باشه نمایش loader
@@ -102,20 +104,21 @@ export default function PlayPage(props) {
   }
 
   // exchange checkbox state (local UI)
-  const [exchangeSelection, setExchangeSelection] = useState([]);
-  const [exchangeOldSelection, setExchangeOldSelection] = useState([]);
+  // store indices instead of card names so duplicates can be selected independently
+  const [exchangeSelection, setExchangeSelection] = useState([]); // indices into pendingExchange.newCards
+  const [exchangeOldSelection, setExchangeOldSelection] = useState([]); // indices into you.influences
 
-  function toggleExchangeChoice(card) {
+  function toggleExchangeChoiceIndex(idx) {
     setExchangeSelection((prev) => {
-      if (prev.includes(card)) return prev.filter((x) => x !== card);
-      return [...prev, card];
+      if (prev.includes(idx)) return prev.filter((x) => x !== idx);
+      return [...prev, idx];
     });
   }
 
-  function toggleExchangeOldChoice(card) {
+  function toggleExchangeOldChoiceIndex(idx) {
     setExchangeOldSelection((prev) => {
-      if (prev.includes(card)) return prev.filter((x) => x !== card);
-      return [...prev, card];
+      if (prev.includes(idx)) return prev.filter((x) => x !== idx);
+      return [...prev, idx];
     });
   }
 
@@ -127,6 +130,17 @@ export default function PlayPage(props) {
 
   return (
     <div className="grid-3">
+      {/* in-game score badge */}
+      <div style={{position:'fixed', left:18, bottom:18, zIndex:60}}>
+        <div className="card" style={{padding:10, minWidth:180}}>
+          <div style={{fontWeight:700}}>امتیاز شما: {gameScore ?? 0}</div>
+          {totals && (
+            <div style={{marginTop:6,fontSize:13,color:'#6b7280'}}>
+              امتیاز کل: {totals.score ?? 0} • HP: {totals.hp ?? 0} • الماس: {totals.gems ?? 0}
+            </div>
+          )}
+        </div>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {/* بازیکنان */}
         <div className="card">
@@ -435,7 +449,7 @@ export default function PlayPage(props) {
                 }}
               >
                 {pendingExchange.newCards.map((card, idx) => {
-                  const checked = exchangeSelection.includes(card);
+                  const checked = exchangeSelection.includes(idx);
                   return (
                     <label
                       key={idx}
@@ -449,20 +463,15 @@ export default function PlayPage(props) {
                       <input
                         type="checkbox"
                         name="exchange-new"
-                        value={card}
+                        value={`${card}__${idx}`}
                         checked={checked}
                         onChange={() => {
                           const maxAllowed = pendingExchange?.origCount ?? 2;
-                          if (
-                            !checked &&
-                            exchangeSelection.length >= maxAllowed
-                          ) {
-                            alert(
-                              `حداکثر ${maxAllowed} کارت جدید می‌توانید انتخاب کنید.`
-                            );
+                          if (!checked && exchangeSelection.length >= maxAllowed) {
+                            alert(`حداکثر ${maxAllowed} کارت جدید می‌توانید انتخاب کنید.`);
                             return;
                           }
-                          toggleExchangeChoice(card);
+                          toggleExchangeChoiceIndex(idx);
                         }}
                         style={{ width: 18, height: 18 }}
                       />
@@ -508,7 +517,7 @@ export default function PlayPage(props) {
                 }}
               >
                 {you?.influences?.map((card, idx) => {
-                  const checked = exchangeOldSelection.includes(card);
+                  const checked = exchangeOldSelection.includes(idx);
                   return (
                     <label
                       key={idx}
@@ -522,20 +531,15 @@ export default function PlayPage(props) {
                       <input
                         type="checkbox"
                         name="exchange-old"
-                        value={card}
+                        value={`${card}__${idx}`}
                         checked={checked}
                         onChange={() => {
                           const maxAllowed = pendingExchange?.origCount ?? 2;
-                          if (
-                            !checked &&
-                            exchangeOldSelection.length >= maxAllowed
-                          ) {
-                            alert(
-                              `حداکثر ${maxAllowed} کارت قدیمی می‌توانید انتخاب کنید.`
-                            );
+                          if (!checked && exchangeOldSelection.length >= maxAllowed) {
+                            alert(`حداکثر ${maxAllowed} کارت قدیمی می‌توانید انتخاب کنید.`);
                             return;
                           }
-                          toggleExchangeOldChoice(card);
+                          toggleExchangeOldChoiceIndex(idx);
                         }}
                         style={{ width: 18, height: 18 }}
                       />
@@ -577,26 +581,20 @@ export default function PlayPage(props) {
                 className="btn"
                 onClick={() => {
                   const maxAllowed = pendingExchange?.origCount ?? 2;
-                  if (
-                    exchangeSelection.length !== exchangeOldSelection.length
-                  ) {
+                  if (exchangeSelection.length > maxAllowed || exchangeOldSelection.length > maxAllowed) {
+                    alert(`حداکثر ${maxAllowed} کارت از هر دسته انتخاب کنید.`);
+                    return;
+                  }
+                  if (exchangeSelection.length !== exchangeOldSelection.length) {
                     alert(
                       `باید به همان تعداد کارت از هر دو دسته انتخاب کنید. (${exchangeSelection.length} جدید، ${exchangeOldSelection.length} قدیمی)`
                     );
                     return;
                   }
-                  if (exchangeSelection.length < 1) {
-                    alert("حداقل ۱ کارت از هر دسته انتخاب کنید.");
-                    return;
-                  }
-                  if (exchangeSelection.length > maxAllowed) {
-                    alert(`حداکثر ${maxAllowed} کارت از هر دسته انتخاب کنید.`);
-                    return;
-                  }
-                  confirmExchangeSelection(
-                    exchangeSelection,
-                    exchangeOldSelection
-                  );
+                  // convert index selections to actual card values
+                  const selectedNewCards = (pendingExchange?.newCards || []).filter((_, i) => exchangeSelection.includes(i));
+                  const selectedOldCards = exchangeOldSelection.length === 0 ? null : (you?.influences || []).filter((_, i) => exchangeOldSelection.includes(i));
+                  confirmExchangeSelection(selectedNewCards, selectedOldCards);
                 }}
               >
                 تأیید
@@ -604,7 +602,8 @@ export default function PlayPage(props) {
               <button
                 className="btn"
                 onClick={() => {
-                  alert("برای لغو صبر کنید یا کارت‌ها را تأیید کنید.");
+                  // cancel means no-change: call confirmExchangeSelection with empty selection
+                  confirmExchangeSelection([], null);
                 }}
               >
                 انصراف
