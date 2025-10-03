@@ -1,0 +1,10 @@
+/* استایل‌های جزئی برای ظاهر بهتر */
+.app-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-badge{width:44px;height:44px;border-radius:12px;color:white;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,#6366f1,#ec4899);font-weight:700}
+.btn{padding:8px 12px;border-radius:8px;border:1px solid #e6e6e6;background:white}
+.btn-primary{background:#4f46e5;color:white;border:none}
+.card-image{width:100%;height:100%;object-fit:cover;border-radius:8px}
+.reveal-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)}
+.reveal-box{background:white;padding:20px;border-radius:12px;box-shadow:0 20px 60px rgba(2,6,23,0.45);text-align:center}
+.log-item{padding:8px;border-bottom:1px dashed #f1f5f9}
