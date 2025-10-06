@@ -24,10 +24,10 @@ export default function ModePage({ onContinue, totals }) {
         </div>
 
         <div style={{flex:1,minWidth:220}} className="card" >
-          <div style={{fontWeight:700}}>آنلاین (به‌زودی)</div>
-          <div style={{color:'#475569',marginTop:6}}>بازی چندنفرهٔ آنلاین با لینک — در نسخه‌های بعدی فعال می‌شود.</div>
+          <div style={{fontWeight:700}}>بازی با دوستان</div>
+          <div style={{color:'#475569',marginTop:6}}>اتاق‌های محلی — ساخت یا پیوستن به روم‌ها (local-only).</div>
           <div style={{marginTop:10}}>
-            <button className="btn btn-ghost" disabled>به‌زودی</button>
+            <button className="btn-primary btn" onClick={() => onContinue('friends')}>ورود به بازی با دوستان</button>
           </div>
         </div>
       </div>

@@ -28,6 +28,7 @@ export default function PlayPage(props) {
     onCloseReveal,
     totals,
     gameScore,
+    me,
   } = props;
 
   // محافظت اولیه — اگر gameState تعریف نشده باشه نمایش loader
@@ -42,8 +43,9 @@ export default function PlayPage(props) {
     );
   }
 
-  // بازیکن خودی را فرض می‌کنیم index 0 است (مطابق ساختار پروژه)
-  const you = gameState.players[0];
+  // identify local player by comparing ids (each tab has a unique me.id)
+  const you = gameState.players.find(p => p.id === (me?.id)) || gameState.players[0];
+  // ensure the player at index 0 is the 'you' for some internal logic (we'll not reorder state)
   const currentPlayer = gameState.players[gameState.turn];
 
   // helper برای تعیین اینکه آیا دکمه‌ها فعال باشن
@@ -161,9 +163,19 @@ export default function PlayPage(props) {
           </div>
 
           <div style={{ marginTop: 12 }} className="player-grid">
-            {gameState.players.map((p) => (
-              <PlayerCard key={p.id} player={p} isYou={p.isHuman} />
-            ))}
+            {/* render players with visual ordering: show rightmost as index 0 (you) */}
+            {(() => {
+              // produce display order where you (if present) is rightmost
+              const list = [...gameState.players];
+              // find index of you in players
+              const youIdx = list.findIndex(p => p.id === you.id);
+              if (youIdx > 0) {
+                // rotate so you is at position 0
+                const rotated = list.slice(youIdx).concat(list.slice(0, youIdx));
+                return rotated.map(p => <PlayerCard key={p.id} player={p} isYou={p.id === you.id} />);
+              }
+              return list.map(p => <PlayerCard key={p.id} player={p} isYou={p.id === you.id} />);
+            })()}
           </div>
         </div>
 
