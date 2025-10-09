@@ -1,0 +1,17 @@
+{
+  "name": "meezbazi-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "bootstrap": "pnpm install",
+    "dev": "pnpm -w -r --parallel dev",
+    "build": "pnpm -w -r build",
+    "lint": "pnpm -w -r lint",
+    "test": "pnpm -w -r test"
+  },
+  "devDependencies": {
+    "pnpm": "^8.0.0"
+  }
+}

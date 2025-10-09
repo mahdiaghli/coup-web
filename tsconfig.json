@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@core-ui/*": ["packages/core-ui/src/*"],
+      "@game-coup/*": ["packages/game-coup/src/*"]
+    }
+  }
+}
