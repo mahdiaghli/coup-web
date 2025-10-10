@@ -6,7 +6,7 @@
   ],
   "scripts": {
     "bootstrap": "pnpm install",
-    "dev": "pnpm -w -r --parallel dev",
+    "dev": "pnpm --filter ./packages/game-coup run dev",
     "build": "pnpm -w -r build",
     "lint": "pnpm -w -r lint",
     "test": "pnpm -w -r test"
