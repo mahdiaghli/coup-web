@@ -109,10 +109,14 @@ export function createClaimsInitiate(ctx, interactions) {
               // پس از اجرای اکشن، state به‌روز را بگیر تا turn/تغییرات override نشود
               const latest = stateRef.current || s2;
               if (latest) {
-                latest.pendingAction = null;
-                setGameState({ ...latest });
+                if (!latest.pendingExchange) {
+                  latest.pendingAction = null;
+                  setGameState({ ...latest });
+                  clearScheduled();
+                } else {
+                  setGameState({ ...latest });
+                }
               }
-              clearScheduled();
             }
           }, 10000);
           scheduledTimeouts.current.push(autoBlock);
@@ -124,10 +128,14 @@ export function createClaimsInitiate(ctx, interactions) {
           // پس از اجرای اکشن، از آخرین state استفاده کن
           const latest = stateRef.current || now;
           if (latest) {
-            latest.pendingAction = null;
-            setGameState({ ...latest });
+            if (!latest.pendingExchange) {
+              latest.pendingAction = null;
+              setGameState({ ...latest });
+              clearScheduled();
+            } else {
+              setGameState({ ...latest });
+            }
           }
-          clearScheduled();
         } // در src/game/logic/claimsInitiate.js — داخل setTimeout(auto1) بخش مربوط به:
         // else if (p.stage === "challenge" && !isBlockableLocal) { ... }
 
@@ -141,13 +149,17 @@ export function createClaimsInitiate(ctx, interactions) {
           // بعد از اجرای اکشن، وضعیت واقعی را از stateRef.current بگیر (تا تغییرات executeAction را از دست ندهیم)
           const updated = stateRef.current || now;
           // اگر executeAction اکشنی گذاشته که نیازمند pendingAction نیست، بهتر است pendingAction حذف شود.
-          // اما اگر executeAction خودش pendingExchange ست کرده، نباید آن را پاک کنیم.
-          // بنابراین فقط زمانی pendingAction را حذف کن که pendingExchange وجود ندارد.
+          // اما اگر executeAction خودش pendingExchange ست کرده، نباید تایمر/سُکجولِ Exchange را پاک کنیم.
+          // بنابراین فقط زمانی scheduled timers را پاک کن که pendingExchange ایجاد نشده باشد.
           if (updated && !updated.pendingExchange) {
+            // هیچ pendingExchange‌ای ساخته نشده؛ پاک‌سازی pendingAction و تایمرها امن است
             updated.pendingAction = null;
+            setGameState({ ...updated });
+            clearScheduled();
+          } else {
+            // در صورتی که pendingExchange وجود دارد، فقط state را به‌روز کن و تایمرها را نگه دار
+            setGameState({ ...updated });
           }
-          setGameState({ ...updated });
-          clearScheduled();
         }
       }
     }, 10000);

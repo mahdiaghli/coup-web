@@ -9,9 +9,22 @@ export function createActionHandlers(ctx) {
     initiateExchange,
     initiateLoseInfluence,
     advanceTurn,
+    // gamification helpers (optional)
+  addGameScore,
+  addPersistentScore,
+  addPersistentHP,
+  resetGameScore,
   } = ctx;
 
   function startBotGame(numPlayers) {
+    // reset per-game score when a new game starts
+    try {
+      if (typeof resetGameScore === "function") resetGameScore();
+    } catch (e) {}
+    // clear previous logs if helper available
+    try {
+      if (typeof resetLog === "function") resetLog();
+    } catch (e) {}
     const deck = newDeck();
     const players = [];
     for (let i = 0; i < numPlayers; i++) {
@@ -21,6 +34,8 @@ export function createActionHandlers(ctx) {
         name: isHuman ? "شما" : makeBotName(i),
         coins: 2,
         alive: true,
+        // per-game score for ranking
+        gameScore: 0,
         influences: [deck.pop(), deck.pop()],
         isHuman,
       });
@@ -68,6 +83,10 @@ export function createActionHandlers(ctx) {
       state.treasury = Math.max(0, (state.treasury || 0) - give);
       pushLog(`${player.name} Tax گرفت (+${give}).`);
       setGameState({ ...state });
+      // scoring: Tax (Duke) gives small points
+      if (player.isHuman && typeof addGameScore === 'function') addGameScore(5);
+  if (typeof player.gameScore === 'number') player.gameScore += 5;
+      if (!player.isHuman && typeof addPersistentScore === 'function') addPersistentScore(2);
       advanceTurn(state);
       return;
     }
@@ -78,6 +97,9 @@ export function createActionHandlers(ctx) {
       player.coins += stolen;
       pushLog(`${player.name} از ${target.name}، ${stolen} سکه دزدید.`);
       setGameState({ ...state });
+      if (player.isHuman && typeof addGameScore === 'function') addGameScore(6);
+  if (typeof player.gameScore === 'number') player.gameScore += 6;
+      if (!player.isHuman && typeof addPersistentScore === 'function') addPersistentScore(3);
       advanceTurn(state);
       return;
     }
@@ -91,6 +113,9 @@ export function createActionHandlers(ctx) {
       state.treasury = (state.treasury || 0) + 3;
       pushLog(`${player.name} Assassinate روی ${target.name} اجرا کرد (-3 سکه).`);
       setGameState({ ...state });
+      if (player.isHuman && typeof addGameScore === 'function') addGameScore(10);
+  if (typeof player.gameScore === 'number') player.gameScore += 10;
+      if (!player.isHuman && typeof addPersistentScore === 'function') addPersistentScore(5);
       // initiate lose influence on target (target must choose a card)
       initiateLoseInfluence(state, target.id, "Assassinate");
       return;
@@ -102,6 +127,9 @@ export function createActionHandlers(ctx) {
       state.treasury = Math.max(0, (state.treasury || 0) - give);
       pushLog(`${player.name} Foreign Aid گرفت (+${give}).`);
       setGameState({ ...state });
+      if (player.isHuman && typeof addGameScore === 'function') addGameScore(2);
+  if (typeof player.gameScore === 'number') player.gameScore += 2;
+      if (!player.isHuman && typeof addPersistentScore === 'function') addPersistentScore(1);
       advanceTurn(state);
       return;
     }
@@ -112,6 +140,9 @@ export function createActionHandlers(ctx) {
       state.treasury = Math.max(0, (state.treasury || 0) - give);
       pushLog(`${player.name} Income گرفت (+${give}).`);
       setGameState({ ...state });
+      if (player.isHuman && typeof addGameScore === 'function') addGameScore(1);
+  if (typeof player.gameScore === 'number') player.gameScore += 1;
+      if (!player.isHuman && typeof addPersistentScore === 'function') addPersistentScore(1);
       advanceTurn(state);
       return;
     }
@@ -125,6 +156,9 @@ export function createActionHandlers(ctx) {
       state.treasury = (state.treasury || 0) + 7;
       pushLog(`${player.name} به ${target.name} Coup زد.`);
       setGameState({ ...state });
+      if (player.isHuman && typeof addGameScore === 'function') addGameScore(15);
+  if (typeof player.gameScore === 'number') player.gameScore += 15;
+      if (!player.isHuman && typeof addPersistentScore === 'function') addPersistentScore(7);
       initiateLoseInfluence(state, target.id, "Coup");
       return;
     }
@@ -141,8 +175,9 @@ export function createActionHandlers(ctx) {
       state.pendingAction = null;
       // فراخوانی handlerِ Exchange که برای انسان pendingExchange را می‌سازد
       initiateExchange(state, player.id);
-      // setGameState تا UI سریعاً pendingExchange را ببیند
-      setGameState({ ...state });
+      // small reward for Exchange (looking for better cards)
+      if (player.isHuman && typeof addGameScore === 'function') addGameScore(4);
+      if (!player.isHuman && typeof addPersistentScore === 'function') addPersistentScore(2);
       return;
     }
 
