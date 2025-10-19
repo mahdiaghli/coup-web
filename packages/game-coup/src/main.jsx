@@ -4,13 +4,7 @@ import App from "./App";
 import "./index.css";
 import "./App.css";
 
-// import React from 'react';
-import { createRoot } from 'react-dom/client';
-import Lobby from './components/Lobby';
-
-createRoot(document.getElementById('root')).render(<Lobby />);
-
-
+// فقط یک بار createRoot می‌زنیم
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />

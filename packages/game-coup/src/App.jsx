@@ -12,11 +12,8 @@ import RoomLobbySimple from "./pages/RoomLobbySimple";
 import useCoupGame from "./game/useCoupGame";
 import { listRooms, subscribe as subscribeRooms, setRoomStarted, getRoomGame, initGameForRoom, leaveRoom } from './utils/roomManager';
 
-// import React from 'react';
-import { createRoot } from 'react-dom/client';
+// Components
 import Lobby from './components/Lobby';
-
-createRoot(document.getElementById('root')).render(<Lobby />);
 
 
 /**

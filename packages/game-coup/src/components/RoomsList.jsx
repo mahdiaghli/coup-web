@@ -1,71 +1,90 @@
-// src/components/RoomsList.jsx
-import React, { useEffect, useState } from "react";
-import { listRooms, subscribe, joinRoom, removeRoom } from "../utils/roomManager";
-import { useNavigate } from "react-router-dom";
+// packages/game-coup/src/components/RoomsList.jsx
+import React, { useEffect, useState } from 'react';
+import { getSocket, connectSocket, getDefaultServerUrl } from '../socket';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { v4 as uuidv4 } from 'uuid'; // pnpm add uuid in package
 
-export default function RoomsList({ me }) {
-  const nav = useNavigate();
-  const [rooms, setRooms] = useState(listRooms());
-  useEffect(()=> subscribe(setRooms), []);
+export default function RoomsList() {
+  const [rooms, setRooms] = useState([]);
+  const { auth } = useAuth();
+  const navigate = useNavigate();
 
-  async function onJoin(r) {
-    // ensure a per-browser display name (persisted in sessionStorage)
-    let displayName = null;
-    try {
-      displayName = sessionStorage.getItem('gw_display_name');
-    } catch (e) {}
-    if (!displayName) {
-      const ans = prompt('نام نمایشی خود را وارد کنید (نمایش در روم):', 'شما');
-      if (ans === null) return; // cancelled
-      displayName = ans.trim() || 'شما';
-      try { sessionStorage.setItem('gw_display_name', displayName); } catch (e) {}
-    }
+  useEffect(() => {
+    const s = getSocket() || connectSocket(getDefaultServerUrl());
 
-    const playerObj = { ...me, name: displayName };
-    if (r.password) {
-      const pwd = prompt("رمز روم را وارد کنید:");
-      if (pwd === null) return;
-      const res = joinRoom(r.id, playerObj, pwd);
-      if (!res.ok) return alert(res.err);
-      nav(`/friends/room/${r.id}`);
-    } else {
-      const res = joinRoom(r.id, playerObj, null);
-      if (!res.ok) return alert(res.err);
-      nav(`/friends/room/${r.id}`);
-    }
+    // initial explicit request (optional)
+    s.emit('list_rooms', (list) => {
+      if (Array.isArray(list)) setRooms(list);
+    });
+
+    const onRooms = (list) => setRooms(list);
+    const onStart = ({ roomId }) => {
+      // if we are in that room, go to mode page
+      if (auth?.room === roomId || true) { // if not tracking room in auth, we still navigate
+        navigate('/mode');
+      }
+    };
+
+    s.on('rooms-list', onRooms);
+    s.on('start-game', onStart);
+
+    return () => {
+      s.off('rooms-list', onRooms);
+      s.off('start-game', onStart);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleCreate() {
+    const s = getSocket() || connectSocket(getDefaultServerUrl());
+    const id = 'room-' + uuidv4().slice(0,6);
+    const name = `Room ${id}`;
+    const capacity = 2; // یا UI از کاربر بگیر
+    s.emit('create_room', { id, name, capacity }, (res) => {
+      if (res && res.ok) {
+        // optionally auto-join
+        s.emit('join', { roomId: id, name: auth?.name || 'Anon' }, () => {
+          // store in auth if you want
+          navigate('/mode');
+        });
+      } else {
+        alert('create room failed: ' + JSON.stringify(res));
+      }
+    });
+  }
+
+  function handleJoin(r) {
+    const s = getSocket() || connectSocket(getDefaultServerUrl());
+    s.emit('join', { roomId: r.id, name: auth?.name || 'Anon' }, (res) => {
+      if (res && res.ok) navigate('/mode');
+      else alert('join failed: ' + JSON.stringify(res));
+    });
   }
 
   return (
-    <div className="card">
-      <div style={{fontWeight:800}}>روم‌های موجود</div>
-      <div style={{marginTop:10,display:'flex',flexDirection:'column',gap:8}}>
-        {rooms.length === 0 && <div style={{color:'#6b7280'}}>روم فعالی وجود ندارد.</div>}
-        {rooms.map(r=>(
-          <div key={r.id} className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontWeight:700}}>{r.name}</div>
-              <div style={{fontSize:13,color:'#6b7280'}}>بازیکنان: {r.players.length}/{r.maxPlayers} — سختی: {r.difficulty}</div>
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              <button className="btn" onClick={()=>nav(`/friends/room/${r.id}`)}>نمایش</button>
-              <button className="btn" onClick={()=>onJoin(r)}>پیوستن</button>
-              {r.hostId === me.id && (
-                <button
-                  className="btn"
-                  style={{ background: '#ef4444', color: '#fff' }}
-                  onClick={() => {
-                    if (!confirm('آیا از حذف این روم مطمئن هستید؟')) return;
-                    const res = removeRoom(r.id, me.id);
-                    if (!res.ok) return alert(res.err || 'خطا در حذف روم');
-                    // refresh local list
-                    setRooms(listRooms());
-                  }}
-                >حذف</button>
-              )}
-            </div>
-          </div>
-        ))}
+    <div style={{ padding: 12 }}>
+      <div style={{ marginBottom: 8 }}>
+        <button onClick={handleCreate}>Create new room</button>
       </div>
+
+      <h4>Rooms</h4>
+      <table>
+        <thead><tr><th>id</th><th>name</th><th>players</th><th>capacity</th><th></th></tr></thead>
+        <tbody>
+          {rooms.map(r => (
+            <tr key={r.id}>
+              <td>{r.id}</td>
+              <td>{r.name}</td>
+              <td>{r.count}</td>
+              <td>{r.capacity}</td>
+              <td>
+                {!r.started ? <button onClick={() => handleJoin(r)}>Join</button> : <span>Started</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
